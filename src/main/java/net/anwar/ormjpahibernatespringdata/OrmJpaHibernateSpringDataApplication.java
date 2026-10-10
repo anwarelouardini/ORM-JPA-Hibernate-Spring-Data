@@ -26,6 +26,13 @@ public class OrmJpaHibernateSpringDataApplication {
             List<Product> products = productRepository.findAll();
             products.forEach(System.out::println);
 
+            System.out.println("**********************");
+            Product product = productRepository.findById(1L).get();
+            System.out.println(product.getName());
+            System.out.println(product.getPrice());
+            System.out.println(product.getQuantity());
+            System.out.println("**********************");
+
         };
     }
 

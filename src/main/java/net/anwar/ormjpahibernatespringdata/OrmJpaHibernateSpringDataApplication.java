@@ -33,6 +33,14 @@ public class OrmJpaHibernateSpringDataApplication {
             System.out.println(product.getQuantity());
             System.out.println("**********************");
 
+            System.out.println("******** search ********");
+            List<Product> products2 = productRepository.search("%a%");
+            products2.forEach(System.out::println);
+
+            System.out.println("******** findByNameConstains ********");
+            List<Product> products3 = productRepository.findByNameContains("a");
+            products2.forEach(System.out::println);
+
         };
     }
 

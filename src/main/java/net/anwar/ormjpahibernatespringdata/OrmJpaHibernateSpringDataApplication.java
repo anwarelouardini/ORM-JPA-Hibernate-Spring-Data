@@ -39,9 +39,16 @@ public class OrmJpaHibernateSpringDataApplication {
 
             System.out.println("******** findByNameConstains ********");
             List<Product> products3 = productRepository.findByNameContains("a");
-            products2.forEach(System.out::println);
+            products3.forEach(System.out::println);
+
+            // Update product
+            Product productById =  productRepository.findById(1L).get();
+            productById.setPrice(10000);
+            productRepository.save(productById);
+
+
+
 
         };
     }
-
 }

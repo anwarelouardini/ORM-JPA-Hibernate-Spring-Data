@@ -23,6 +23,9 @@ public class OrmJpaHibernateSpringDataApplication {
             productRepository.save(new Product(null, "Phone", 5500, 10));
             productRepository.save(new Product(null, "Earbuds", 2500, 10));
 
+            List<Product> products = productRepository.findAll();
+            products.forEach(System.out::println);
+
         };
     }
 

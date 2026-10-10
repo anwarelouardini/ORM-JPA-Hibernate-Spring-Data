@@ -46,7 +46,8 @@ public class OrmJpaHibernateSpringDataApplication {
             productById.setPrice(10000);
             productRepository.save(productById);
 
-
+            // Delete Product
+            productRepository.delete(productRepository.findById(1L).get());
 
 
         };

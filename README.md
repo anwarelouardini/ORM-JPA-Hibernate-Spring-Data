@@ -1,20 +1,17 @@
 # ORM, JPA, Hibernate et Spring Data
 
-Application Spring Boot qui illustre la persistance des données avec **JPA**, **Hibernate** et **Spring Data JPA**, puis la migration d'une base **H2** en mémoire vers un serveur **MySQL**.
+Application Spring Boot qui illustre la persistance des données avec **JPA**, **Hibernate** et **Spring Data JPA**, expose les produits grâce à une **API REST**, puis migre d'une base **H2** en mémoire vers un serveur **MySQL**.
 
 Ce projet m'a permis de comprendre comment un objet Java devient une ligne en base de données, sans écrire une seule requête SQL de création de table.
-
----
 
 ## Objectifs du TP
 
 1. Mapper une classe Java vers une table grâce à JPA
 2. Utiliser Spring Data JPA pour réaliser les opérations CRUD
 3. Écrire des requêtes personnalisées avec `@Query` et des méthodes dérivées
-4. Migrer de H2 vers MySQL sans modifier le code métier
-5. Sécuriser les identifiants de connexion avec des variables d'environnement
-
----
+4. Exposer les données avec une API REST
+5. Migrer de H2 vers MySQL sans modifier le code métier
+6. Sécuriser les identifiants de connexion avec des variables d'environnement
 
 ## Technologies utilisées
 
@@ -22,6 +19,7 @@ Ce projet m'a permis de comprendre comment un objet Java devient une ligne en ba
 |---|---|
 | Java 25 | Langage |
 | Spring Boot 4 | Framework principal |
+| Spring Web | API REST |
 | Spring Data JPA | Accès aux données |
 | Hibernate | Implémentation de JPA (ORM) |
 | H2 | Base en mémoire pour la phase de test |
@@ -29,8 +27,6 @@ Ce projet m'a permis de comprendre comment un objet Java devient une ligne en ba
 | DBngin | Lancement du serveur MySQL sur Mac |
 | TablePlus | Client graphique pour consulter la base |
 | IntelliJ IDEA | Environnement de développement |
-
----
 
 ## Structure du projet
 
@@ -41,13 +37,13 @@ src/main/java/net/anwar/ormjpahibernatespringdata
         Product.java
     repository
         ProductRepository.java
+    web
+        ProductRestService.java
 src/main/resources
     application.properties
 ```
 
-Le projet suit une séparation simple : les **entités** décrivent les données, le **repository** y donne accès, et la classe principale exécute les scénarios de test grâce à un `CommandLineRunner`.
-
----
+Les entités décrivent les données, le repository y donne accès, la couche web les expose en JSON, et la classe principale exécute des scénarios de test grâce à un `CommandLineRunner`.
 
 ## L'entité Product
 
@@ -70,8 +66,6 @@ public class Product {
 
 Au démarrage, Hibernate lit cette classe et crée la table `product` dans la base.
 
----
-
 ## Le repository
 
 `ProductRepository` hérite de `JpaRepository`, ce qui donne sans code supplémentaire les méthodes `save`, `findById`, `findAll` et `deleteById`.
@@ -92,7 +86,51 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 La méthode `findByNameContains` n'a besoin d'aucune implémentation : Spring Data déduit la requête à partir de son nom.
 
----
+## La couche web
+
+Un contrôleur REST expose les produits au format JSON. Il s'appuie directement sur le repository, injecté par le constructeur.
+
+```java
+@RestController
+public class ProductRestService {
+
+    private final ProductRepository productRepository;
+
+    public ProductRestService(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
+
+    @GetMapping("/products")
+    public List<Product> products() {
+        return productRepository.findAll();
+    }
+
+    @GetMapping("/products/{id}")
+    public Product productById(@PathVariable Long id) {
+        return productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Produit " + id + " introuvable"));
+    }
+}
+```
+
+### Endpoints disponibles
+
+| Méthode | URL | Description |
+|---|---|---|
+| GET | `/products` | Liste tous les produits |
+| GET | `/products/{id}` | Retourne un produit, ou une erreur 404 s'il n'existe pas |
+
+### Tester l'API
+
+Après le démarrage, ouvrir dans le navigateur :
+
+```
+http://localhost:8080/products
+http://localhost:8080/products/1
+```
+
+Un identifiant inexistant renvoie une erreur 404 claire au lieu d'une réponse vide.
 
 ## Opérations réalisées
 
@@ -136,8 +174,6 @@ Ici l'identifiant existe déjà, donc `save` produit un `UPDATE`.
 productRepository.deleteById(1L);
 ```
 
----
-
 ## Mise à jour : pourquoi cette approche
 
 J'ai comparé deux façons de modifier un produit existant.
@@ -148,8 +184,6 @@ J'ai comparé deux façons de modifier un produit existant.
 | `@Modifying` avec `@Query` | Modification en masse ou requête imposée |
 
 L'approche `findById` reste la plus sûre : Hibernate gère son cache, le verrouillage optimiste et les validations. L'annotation `@Modifying` exécute la requête directement en base et peut laisser des valeurs périmées dans le cache de Hibernate, d'où les options `flushAutomatically` et `clearAutomatically`.
-
----
 
 ## Migration de H2 vers MySQL
 
@@ -187,23 +221,11 @@ spring.jpa.show-sql=true
 
 Le code Java n'a pas changé. C'est tout l'intérêt de JPA : l'application ne dépend pas du type de base utilisé.
 
----
-
 ## Sécurité des identifiants
 
 Le mot de passe n'est jamais écrit en clair dans le dépôt. Il est lu depuis des variables d'environnement grâce à la syntaxe `${NOM:valeur par défaut}`.
 
-Dans IntelliJ, les variables se définissent ici :
-
-**Run, Edit Configurations, Modify options, Environment variables**
-
-```
-DB_USER=root;DB_PASSWORD=votre_mot_de_passe
-```
-
-Ainsi, aucune information sensible n'apparaît dans le code partagé.
-
----
+Dans IntelliJ, les variables se définissent dans **Run, Edit Configurations, Modify options, Environment variables**. Elles restent dans la configuration locale de l'IDE et n'apparaissent dans aucun fichier du projet.
 
 ## Lancer le projet
 
@@ -211,11 +233,9 @@ Ainsi, aucune information sensible n'apparaît dans le code partagé.
 2. Démarrer MySQL et créer la base `products_db`
 3. Définir les variables `DB_USER` et `DB_PASSWORD`
 4. Lancer la classe `OrmJpaHibernateSpringDataApplication`
-
----
+5. Ouvrir `http://localhost:8080/products` dans le navigateur
 
 ## Captures d'écran
-
 
 ### Table product générée par Hibernate
 
@@ -229,9 +249,14 @@ Ainsi, aucune information sensible n'apparaît dans le code partagé.
 
 ![Console](docs/screenshots/console.png)
 
+### API : liste des produits
 
+![Liste des produits](docs/screenshots/api-products.png)
 
----
+### API : produit par identifiant
+
+![Produit par identifiant](docs/screenshots/api-product-by-id.png)
+
 
 ## Ce que j'ai appris
 
@@ -240,12 +265,12 @@ Ainsi, aucune information sensible n'apparaît dans le code partagé.
 3. Le fonctionnement de `save`, qui insère ou met à jour selon l'identifiant
 4. Les requêtes dérivées du nom de méthode et les requêtes JPQL
 5. Le cache de premier niveau d'Hibernate et ses effets sur `@Modifying`
-6. La migration d'une base à une autre uniquement par la configuration
-7. La protection des données sensibles avec les variables d'environnement
-
----
+6. Le rôle de `@RestController` et la gestion d'une ressource introuvable avec une erreur 404
+7. La migration d'une base à une autre uniquement par la configuration
+8. La protection des données sensibles avec les variables d'environnement
 
 ## Auteur
 
-**Anwar**
-Étudiant en développement, réalisé dans le cadre d'un travail pratique sur la persistance des données avec Spring.
+**EL OUARDINI Anwar**
+
+Travail pratique réalisé sur la persistance des données avec Spring.

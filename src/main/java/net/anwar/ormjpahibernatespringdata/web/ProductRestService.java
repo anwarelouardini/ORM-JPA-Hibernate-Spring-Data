@@ -3,9 +3,7 @@ package net.anwar.ormjpahibernatespringdata.web;
 import net.anwar.ormjpahibernatespringdata.entities.Product;
 import net.anwar.ormjpahibernatespringdata.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -22,6 +20,11 @@ public class ProductRestService {
     @GetMapping("/products/{id}")
     public Product productById(@PathVariable Long id) {
         return productRepository.findById(id).orElse(null);
+    }
+
+    @PostMapping("/products")
+    public Product saveProduct(@RequestBody Product product) {
+        return productRepository.save(product);
     }
 
 
